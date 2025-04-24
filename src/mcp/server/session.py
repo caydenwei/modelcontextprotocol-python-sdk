@@ -85,11 +85,15 @@ class ServerSession(
         read_stream: MemoryObjectReceiveStream[types.JSONRPCMessage | Exception],
         write_stream: MemoryObjectSendStream[types.JSONRPCMessage],
         init_options: InitializationOptions,
+        require_initialization: bool = True,
     ) -> None:
         super().__init__(
             read_stream, write_stream, types.ClientRequest, types.ClientNotification
         )
-        self._initialization_state = InitializationState.NotInitialized
+        if require_initialization:
+            self._initialization_state = InitializationState.NotInitialized
+        else:
+            self._initialization_state = InitializationState.Initialized
         self._init_options = init_options
         self._incoming_message_stream_writer, self._incoming_message_stream_reader = (
             anyio.create_memory_object_stream[ServerRequestResponder](0)
@@ -179,7 +183,11 @@ class ServerSession(
                     )
 
     async def send_log_message(
-        self, level: types.LoggingLevel, data: Any, logger: str | None = None
+        self,
+        level: types.LoggingLevel,
+        data: Any,
+        logger: str | None = None,
+        related_request_id: types.RequestId | None = None,
     ) -> None:
         """Send a log message notification."""
         await self.send_notification(
@@ -192,7 +200,8 @@ class ServerSession(
                         logger=logger,
                     ),
                 )
-            )
+            ),
+            related_request_id,
         )
 
     async def send_resource_updated(self, uri: AnyUrl) -> None:
@@ -261,7 +270,11 @@ class ServerSession(
         )
 
     async def send_progress_notification(
-        self, progress_token: str | int, progress: float, total: float | None = None
+        self,
+        progress_token: str | int,
+        progress: float,
+        total: float | None = None,
+        related_request_id: str | None = None,
     ) -> None:
         """Send a progress notification."""
         await self.send_notification(
@@ -274,7 +287,8 @@ class ServerSession(
                         total=total,
                     ),
                 )
-            )
+            ),
+            related_request_id,
         )
 
     async def send_resource_list_changed(self) -> None:
